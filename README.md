@@ -9,11 +9,6 @@ This repository contains a course research project in **Search-Based Software Te
 - **Test generation / GA engine**: EvoSuite (source modification / extension where needed)
 - **Mutation instrumentation**: EvoSuite's built-in mutation infrastructure (no external mutation tool)
 
-Useful EvoSuite source references:
-- `TestFitnessFunction`: `https://github.com/EvoSuite/evosuite/blob/master/client/src/main/java/org/evosuite/testcase/TestFitnessFunction.java`
-- `MutationInstrumentation`: `https://github.com/EvoSuite/evosuite/blob/6d2e848c683e15ce9eb9a7ace506993ea46db022/client/src/main/java/org/evosuite/instrumentation/coverage/MutationInstrumentation.java#L66`
-- `MutationFactory`: `https://github.com/EvoSuite/evosuite/blob/6d2e848c683e15ce9eb9a7ace506993ea46db022/client/src/main/java/org/evosuite/coverage/mutation/MutationFactory.java#L115`
-
 ---
 
 ## Project direction (updated)
