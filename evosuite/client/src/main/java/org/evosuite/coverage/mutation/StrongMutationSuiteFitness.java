@@ -20,6 +20,10 @@
 package org.evosuite.coverage.mutation;
 
 import org.evosuite.Properties;
+import org.evosuite.instrumentation.mutation.InsertUnaryOperator;
+import org.evosuite.instrumentation.mutation.ReplaceArithmeticOperator;
+import org.evosuite.instrumentation.mutation.ReplaceConstant;
+import org.evosuite.instrumentation.mutation.ReplaceVariable;
 import org.evosuite.testcase.TestCase;
 import org.evosuite.testcase.TestChromosome;
 import org.evosuite.testcase.execution.ExecutionResult;
@@ -71,12 +75,13 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
      */
     private List<TestChromosome> prioritizeTests(TestSuiteChromosome individual) {
         List<TestChromosome> executionOrder = new ArrayList<>(individual.getTestChromosomes());
-        executionOrder.sort(Comparator.comparingLong(tch ->
-                tch.getLastExecutionResult().getExecutionTime()));
+        executionOrder.sort(Comparator.comparingLong(tch -> tch.getLastExecutionResult().getExecutionTime()));
         return executionOrder;
     }
 
-    /* (non-Javadoc)
+    /*
+     * (non-Javadoc)
+     * 
      * @see org.evosuite.ga.FitnessFunction#getFitness(org.evosuite.ga.Chromosome)
      */
 
@@ -87,7 +92,8 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
     public double getFitness(TestSuiteChromosome suite) {
         runTestSuite(suite);
 
-        // Set<MutationTestFitness> uncoveredMutants = MutationTestPool.getUncoveredFitnessFunctions();
+        // Set<MutationTestFitness> uncoveredMutants =
+        // MutationTestPool.getUncoveredFitnessFunctions();
 
         for (TestChromosome test : suite.getTestChromosomes()) {
             ExecutionResult result = test.getLastExecutionResult();
@@ -115,9 +121,9 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
         Map<Mutation, Double> minMutantFitness = new LinkedHashMap<>();
 
         // For each mutant that is not in the archive:
-        //   3    -> not covered
-        //   1..2 -> infection distance
-        //   0..1 -> propagation distance
+        // 3 -> not covered
+        // 1..2 -> infection distance
+        // 0..1 -> propagation distance
         for (Integer mutantId : this.mutantMap.keySet()) {
             MutationTestFitness mutantFitness = mutantMap.get(mutantId);
             minMutantFitness.put(mutantFitness.getMutation(), 3.0);
@@ -168,31 +174,61 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
                     if (touchedMutantsDistances.get(mutantID) == 0.0) {
                         logger.debug("Executing test against mutant " + goal.getMutation());
 
-                        mutantInfectionDistance = goal.getFitness(test, result); // archive is updated by the TestFitnessFunction class
+                        mutantInfectionDistance = goal.getFitness(test, result); // archive is updated by the
+                                                                                 // TestFitnessFunction class
                     } else {
                         // We can skip calling the test fitness function since we already know
                         // fitness is 1.0 (for propagation) + infection distance
                         mutantInfectionDistance = 1.0 + normalize(touchedMutantsDistances.get(mutantID));
                     }
                 } else {
-                    mutantInfectionDistance = goal.getFitness(test, result); // archive is updated by the TestFitnessFunction class
+                    mutantInfectionDistance = goal.getFitness(test, result); // archive is updated by the
+                                                                             // TestFitnessFunction class
                 }
 
                 if (mutantInfectionDistance == 0.0) {
                     numKilled++;
                     newKilled.add(mutantID);
                     result.test.addCoveredGoal(goal); // update list of covered goals
-                    this.toRemoveMutants.add(mutantID); // goal to not be considered by the next iteration of the evolutionary algorithm
+                    this.toRemoveMutants.add(mutantID); // goal to not be considered by the next iteration of the
+                                                        // evolutionary algorithm
                 } else {
-                    minMutantFitness.put(goal.getMutation(), Math.min(mutantInfectionDistance, minMutantFitness.get(goal.getMutation())));
+                    minMutantFitness.put(goal.getMutation(),
+                            Math.min(mutantInfectionDistance, minMutantFitness.get(goal.getMutation())));
                 }
             }
         }
 
-        //logger.info("Fitness values for " + minMutantFitness.size() + " mutants");
-        for (Double fit : minMutantFitness.values()) {
-            fitness += fit;
+        // TODO: is it enough?
+        String[] operators = { ReplaceVariable.NAME, InsertUnaryOperator.NAME, ReplaceConstant.NAME,
+                ReplaceArithmeticOperator.NAME };
+        Double[] fitnessValues = new Double[operators.length];
+        Double fitnessSum = 0.0;
+
+        // logger.info("Fitness values for " + minMutantFitness.size() + " mutants");
+        for (Map.Entry<Mutation, Double> entry : minMutantFitness.entrySet()) {
+            Mutation mutant = entry.getKey();
+            Double fit = entry.getValue();
+            int type = 0;
+
+            for (int i = 0; i < operators.length; i++) {
+                if (mutant.getMutationName().startsWith(operators[i])) {
+                    type = i;
+                    break;
+                }
+            }
+            fitnessValues[type] = fit;
+            fitnessSum += fit;
         }
+
+        Double entropy = 0.0;
+
+        for (int i = 0; i < operators.length; i++) {
+            entropy = entropy - fitnessValues[i] / fitnessSum * Math.log(fitnessValues[i] / fitnessSum);
+        }
+
+        // TODO: is it correct?
+        fitness = fitnessSum * entropy;
 
         logger.debug("Mutants killed: {}, Checked: {}, Goals: {})", numKilled, mutantsChecked, this.numMutants);
 
