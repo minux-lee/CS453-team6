@@ -1,5 +1,5 @@
 # Container image for building the project
-FROM maven:3-openjdk-11 as build
+FROM maven:3-eclipse-temurin-11 AS build
 LABEL maintainer="Mitchell Olsthoorn"
 
 # Parameter for skipping the tests in the build process
@@ -25,7 +25,7 @@ RUN mvn -e -B package -DskipTests=${SKIP_TESTS} && \
     mv master/target/evosuite-master-*.jar bin/evosuite.jar
 
 # Container image for running EvoSuite
-FROM openjdk:11-jdk
+FROM eclipse-temurin:11-jdk
 
 WORKDIR /evosuite
 VOLUME /evosuite
