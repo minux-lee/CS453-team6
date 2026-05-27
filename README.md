@@ -22,26 +22,26 @@ Useful EvoSuite source references:
 
 Mutation testing is commonly motivated by the hypothesis that **tests that kill mutants are also likely to reveal real faults**. Since real-world faults appear in many forms, a test suite that kills **a wide range of mutant operator types** may be more robust than a suite that overfits to a single operator type.
 
-Example (3 mutation types \(M_1, M_2, M_3\)):
+Example (3 mutation types $M_1, M_2, M_3$):
 
-- Case A: \(M_1=100, M_2=0, M_3=0\)
-- Case B: \(M_1=30, M_2=30, M_3=30\)
+- Case A: $M_1=100, M_2=0, M_3=0$
+- Case B: $M_1=30, M_2=30, M_3=30$
 
 Both cases can have a similar overall mutation score, but Case B is hypothesized to be **safer** due to broader fault-model coverage.
 
 ### Quantifying diversity with entropy
 
-Let \(c_i\) be the number of killed mutants of type \(i\), and \(p_i = \frac{c_i}{\sum_j c_j}\).
-We define the mutant-type diversity value \(v\) using **Shannon entropy**:
+Let $c_i$ be the number of killed mutants of type $i$, and $p_i = \frac{c_i}{\sum_j c_j}$.
+We define the mutant-type diversity value $v$ using **Shannon entropy**:
 
-\[
+$$
 v = -\sum_{i=1}^{n} p_i \log(p_i)
-\]
+$$
 
-Properties we want from \(v\):
+Properties we want from $v$:
 - **Continuity** and smooth changes as the distribution changes
 - **Monotonicity** under the uniform distribution (more covered types increases diversity)
-- A bounded range: \(0 \le v \le \log(n)\), where \(n\) is the number of mutation operator types considered
+- A bounded range: $0 \le v \le \log(n)$, where $n$ is the number of mutation operator types considered
 
 Reference: `https://en.wikipedia.org/wiki/Entropy_(information_theory)`
 
@@ -53,24 +53,24 @@ We start from an existing mutation-based fitness baseline (e.g., a strong-mutati
 
 We will initially evaluate multiplicative coupling:
 
-- **Baseline**: \(F_{base}\)
-- **Diversity-weighted**: \(F = F_{base}\cdot(1 + k\cdot v)\)
+- **Baseline**: $F_{base}$
+- **Diversity-weighted**: $F = F_{base}\cdot(1 + k\cdot v)$
 
-where \(k\) controls how strongly diversity affects selection pressure.
+where $k$ controls how strongly diversity affects selection pressure.
 
 If needed, we will also compare alternative combinations (additive, exponentiation, progressive schedules), for example:
-- \(F = F_{base} + k\cdot v\)
-- \(F = v^{\alpha}\cdot F_{base}^{\beta}\)
+- $F = F_{base} + k\cdot v$
+- $F = v^{\alpha}\cdot F_{base}^{\beta}$
 
 ---
 
 ## Evaluation plan
 
 We will:
-- **Sweep \(k\)** across multiple values and run EvoSuite for a fixed budget (time/fitness evaluations) per configuration.
+- **Sweep $k$** across multiple values and run EvoSuite for a fixed budget (time/fitness evaluations) per configuration.
 - Track:
   - overall mutation score (final evaluation)
-  - diversity value \(v\) during/after evolution
+  - diversity value $v$ during/after evolution
   - resulting fitness trends across iterations
 - Plot curves to identify an **optimal region** where diversity improves without degrading overall effectiveness.
 
