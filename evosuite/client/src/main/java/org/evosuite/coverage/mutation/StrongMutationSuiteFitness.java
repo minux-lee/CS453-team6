@@ -24,6 +24,11 @@ import org.evosuite.instrumentation.mutation.InsertUnaryOperator;
 import org.evosuite.instrumentation.mutation.ReplaceArithmeticOperator;
 import org.evosuite.instrumentation.mutation.ReplaceConstant;
 import org.evosuite.instrumentation.mutation.ReplaceVariable;
+import org.evosuite.instrumentation.mutation.NegateCondition;
+import org.evosuite.instrumentation.mutation.DeleteField;
+import org.evosuite.instrumentation.mutation.DeleteStatement;
+import org.evosuite.instrumentation.mutation.ReplaceBitwiseOperator;
+import org.evosuite.instrumentation.mutation.ReplaceComparisonOperator;
 import org.evosuite.testcase.TestCase;
 import org.evosuite.testcase.TestChromosome;
 import org.evosuite.testcase.execution.ExecutionResult;
@@ -201,7 +206,8 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
 
         // TODO: is it enough?
         String[] operators = { ReplaceVariable.NAME, InsertUnaryOperator.NAME, ReplaceConstant.NAME,
-                ReplaceArithmeticOperator.NAME };
+                ReplaceArithmeticOperator.NAME, DeleteField.NAME, DeleteStatement.NAME,
+                NegateCondition.NAME, ReplaceBitwiseOperator.NAME, ReplaceComparisonOperator.NAME };
         Double[] fitnessValues = new Double[operators.length];
         Double fitnessSum = 0.0;
 
