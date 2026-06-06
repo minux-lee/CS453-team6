@@ -213,9 +213,9 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
         Double[] fitnessValues = new Double[operators.length];
         Double fitnessSum = 0.0;
 
-        for  (int i = 0; i < operator.length; i++)
+        for  (int i = 0; i < operators.length; i++)
         {
-            fitnessValues[i] = 0;
+            fitnessValues[i] = 0.0;
         }
 
         // logger.info("Fitness values for " + minMutantFitness.size() + " mutants");
@@ -234,15 +234,15 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
             fitnessValues[type] += fit;
             fitnessSum += fit;
         }
-
+            
         Double entropy = 0.0;
 
         for (int i = 0; i < operators.length; i++) {
             entropy = entropy - fitnessValues[i] / fitnessSum * Math.log(fitnessValues[i] / fitnessSum);
         }
 
-        // TODO: is it correct?
-        fitness = fitnessSum * entropy;
+        // TODO: is it correct? 
+        fitness = fitnessSum * (1-entropy);
 
         logger.debug("Mutants killed: {}, Checked: {}, Goals: {})", numKilled, mutantsChecked, this.numMutants);
 
