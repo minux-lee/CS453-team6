@@ -20,10 +20,9 @@
 package org.evosuite.coverage.mutation;
 
 import org.evosuite.Properties;
-import org.evosuite.instrumentation.mutation.InsertUnaryOperator;
-import org.evosuite.instrumentation.mutation.ReplaceArithmeticOperator;
-import org.evosuite.instrumentation.mutation.ReplaceConstant;
-import org.evosuite.instrumentation.mutation.ReplaceVariable;
+import org.evosuite.rmi.ClientServices;
+import org.evosuite.statistics.RuntimeVariable;
+import org.evosuite.instrumentation.mutation.*;
 import org.evosuite.testcase.TestCase;
 import org.evosuite.testcase.TestChromosome;
 import org.evosuite.testcase.execution.ExecutionResult;
@@ -44,8 +43,92 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
 
     private static final long serialVersionUID = -9124328839917834720L;
 
+    // Added by CS453 Team 6
+    private static final String[] MUTATION_OPERATORS = {
+            DeleteField.NAME, DeleteStatement.NAME, InsertUnaryOperator.NAME, ReplaceVariable.NAME,
+            ReplaceConstant.NAME, ReplaceArithmeticOperator.NAME, ReplaceComparisonOperator.NAME,
+            ReplaceBitwiseOperator.NAME, NegateCondition.NAME
+    };
+
+    // Added by CS453 Team 6
+    private static final int NUM_BUCKETS = MUTATION_OPERATORS.length + 1;
+
+    // Added by CS453 Team 6
+    private final Map<Integer, Integer> mutantTypeCache = new HashMap<>();
+
+    // Added by CS453 Team 6
+    private int operatorBucketsPresent = -1;
+
+    // Added by CS453 Team 6
+    private double lastEntropy = 0.0;
+
+    // Added by CS453 Team 6
+    private double lastEntropyNorm = 0.0;
+
     public StrongMutationSuiteFitness() {
         super(Properties.Criterion.STRONGMUTATION);
+    }
+
+    // Added by CS453 Team 6
+    private static int operatorBucketOf(Mutation mutant) {
+        String name = mutant.getMutationName();
+        for (int i = 0; i < MUTATION_OPERATORS.length; i++) {
+            if (name.startsWith(MUTATION_OPERATORS[i])) {
+                return i;
+            }
+        }
+        return MUTATION_OPERATORS.length; // OTHER
+    }
+
+    // Added by CS453 Team 6
+    private double computeDiversityDeficiency(Set<Integer> newKilled) {
+        for (Map.Entry<Integer, MutationTestFitness> entry : this.mutantMap.entrySet()) {
+            mutantTypeCache.computeIfAbsent(entry.getKey(),
+                    id -> operatorBucketOf(entry.getValue().getMutation()));
+        }
+
+        if (operatorBucketsPresent < 0) {
+            Set<Integer> present = new LinkedHashSet<>(mutantTypeCache.values());
+            operatorBucketsPresent = Math.max(present.size(), 1);
+        }
+
+        Set<Integer> killed = new LinkedHashSet<>(removedMutants);
+        killed.addAll(newKilled);
+
+        long[] counts = new long[NUM_BUCKETS];
+        long total = 0;
+        for (Integer id : killed) {
+            Integer bucket = mutantTypeCache.get(id);
+            if (bucket != null) {
+                counts[bucket]++;
+                total++;
+            }
+        }
+
+        if (total == 0 || operatorBucketsPresent <= 1) {
+            this.lastEntropy = 0.0;
+            this.lastEntropyNorm = 0.0;
+            return 0.0;
+        }
+
+        double entropy = 0.0;
+        for (long count : counts) {
+            if (count > 0) {
+                double p = (double) count / (double) total;
+                entropy -= p * Math.log(p);
+            }
+        }
+
+        double vHat = entropy / Math.log(operatorBucketsPresent);
+        if (vHat < 0.0) {
+            vHat = 0.0;
+        } else if (vHat > 1.0) {
+            vHat = 1.0;
+        }
+
+        this.lastEntropy = entropy;
+        this.lastEntropyNorm = vHat;
+        return 1.0 - vHat;
     }
 
     /**
@@ -114,7 +197,7 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
         logger.debug("Calculating branch fitness: ");
         boolean archive = Properties.TEST_ARCHIVE;
         Properties.TEST_ARCHIVE = false;
-        double fitness = branchFitness.getFitness(suite);
+        double branchValue = branchFitness.getFitness(suite);
         Properties.TEST_ARCHIVE = archive;
 
         Set<Integer> touchedMutants = new LinkedHashSet<>();
@@ -199,38 +282,44 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
             }
         }
 
-        // TODO: is it enough?
-        String[] operators = { ReplaceVariable.NAME, InsertUnaryOperator.NAME, ReplaceConstant.NAME,
-                ReplaceArithmeticOperator.NAME };
-        Double[] fitnessValues = new Double[operators.length];
-        Double fitnessSum = 0.0;
+        // ============================================================
+        // Diversity-Aware Mutation Fitness (CS453 Team6)
+        // ============================================================
 
-        // logger.info("Fitness values for " + minMutantFitness.size() + " mutants");
-        for (Map.Entry<Mutation, Double> entry : minMutantFitness.entrySet()) {
-            Mutation mutant = entry.getKey();
-            Double fit = entry.getValue();
-            int type = 0;
-
-            for (int i = 0; i < operators.length; i++) {
-                if (mutant.getMutationName().startsWith(operators[i])) {
-                    type = i;
-                    break;
-                }
-            }
-            fitnessValues[type] = fit;
-            fitnessSum += fit;
+        double fBase = branchValue;
+        for (Double fit : minMutantFitness.values()) {
+            fBase += fit;
         }
 
-        Double entropy = 0.0;
+        double diversityDeficiency = computeDiversityDeficiency(newKilled);
+        ClientServices.getInstance().getClientNode().trackOutputVariable(
+                RuntimeVariable.MutantTypeEntropy, this.lastEntropy);
+        ClientServices.getInstance().getClientNode().trackOutputVariable(
+                RuntimeVariable.MutantTypeEntropyNorm, this.lastEntropyNorm);
 
-        for (int i = 0; i < operators.length; i++) {
-            entropy = entropy - fitnessValues[i] / fitnessSum * Math.log(fitnessValues[i] / fitnessSum);
+        double fitness;
+        double k = Properties.DIVERSITY_K;
+        switch (Properties.DIVERSITY_COUPLING) {
+            case MULTIPLICATIVE:
+                fitness = fBase * (1.0 + k * diversityDeficiency);
+                break;
+            case ADDITIVE:
+                fitness = fBase + k * diversityDeficiency;
+                break;
+            case EXPONENTIAL:
+                fitness = fBase * Math.exp(k * diversityDeficiency);
+                break;
+            case CAPPED_MULTIPLICATIVE:
+                fitness = fBase * (1.0 + Math.min(k * diversityDeficiency, Properties.DIVERSITY_CAP));
+                break;
+            case NONE:
+            default:
+                fitness = fBase;
+                break;
         }
 
-        // TODO: is it correct?
-        fitness = fitnessSum * entropy;
-
-        logger.debug("Mutants killed: {}, Checked: {}, Goals: {})", numKilled, mutantsChecked, this.numMutants);
+        logger.debug("Mutants killed: {}, Checked: {}, Goals: {}, diversityDeficiency: {})", numKilled,
+                mutantsChecked, this.numMutants, diversityDeficiency);
 
         updateIndividual(suite, fitness);
 
