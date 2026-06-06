@@ -30,12 +30,16 @@ import java.util.Map;
  * <p>
  * This enumeration defines all the runtime variables we want to store in
  * the CSV files.
- * A runtime variable is either an output of the search (e.g., obtained branch coverage)
- * or something that can only be determined once the CUT is analyzed (e.g., the number of branches)
+ * A runtime variable is either an output of the search (e.g., obtained branch
+ * coverage)
+ * or something that can only be determined once the CUT is analyzed (e.g., the
+ * number of branches)
  *
  * <p>
- * Note, it is perfectly fine to add new runtime variables in this enum, in any position.
- * But it is essential to provide JavaDoc <b>descriptions</b> for each new variable
+ * Note, it is perfectly fine to add new runtime variables in this enum, in any
+ * position.
+ * But it is essential to provide JavaDoc <b>descriptions</b> for each new
+ * variable
  *
  * <p>
  * WARNING: do not change the name of any variable! If you do, current R
@@ -142,6 +146,10 @@ public enum RuntimeVariable {
      * Obtained coverage of the chosen testing criterion
      */
     Coverage,
+    // Added by CS453 Team 6
+    MutantTypeEntropy,
+    // Added by CS453 Team 6
+    MutantTypeEntropyNorm,
     /**
      * A bit string (0/1) representing whether goals (in order) are covered
      */
@@ -151,7 +159,8 @@ public enum RuntimeVariable {
      */
     Fitness,
     /**
-     * Obtained coverage (of the chosen testing criterion) at different points in time
+     * Obtained coverage (of the chosen testing criterion) at different points in
+     * time
      */
     CoverageTimeline,
     /**
@@ -192,7 +201,8 @@ public enum RuntimeVariable {
     AmbiguityScore_T0,
     AmbiguityScoreTimeline,
     /**
-     * Not only the covered branches ratio, but also including the branchless methods. FIXME: this will need to be changed
+     * Not only the covered branches ratio, but also including the branchless
+     * methods. FIXME: this will need to be changed
      */
     BranchCoverage,
     /**
@@ -317,12 +327,13 @@ public enum RuntimeVariable {
     @Deprecated
     Minimized_Size,
     /**
-     * Either use  {@link RuntimeVariable#Length}
+     * Either use {@link RuntimeVariable#Length}
      */
     @Deprecated
     Minimized_Length,
     /**
-     * The random seed used during the search. A random one was used if none was specified at the beginning
+     * The random seed used during the search. A random one was used if none was
+     * specified at the beginning
      */
     Random_Seed,
     /**
@@ -342,23 +353,28 @@ public enum RuntimeVariable {
      */
     NumUnstableTests,
     /**
-     * An estimate (ie not precise) of the maximum number of threads running at the same time in the CUT
+     * An estimate (ie not precise) of the maximum number of threads running at the
+     * same time in the CUT
      */
     Threads,
     /**
-     * Number of top-level methods throwing an undeclared exception explicitly with a 'throw new'
+     * Number of top-level methods throwing an undeclared exception explicitly with
+     * a 'throw new'
      */
     Explicit_MethodExceptions,
     /**
-     * Number of undeclared exception types that were explicitly thrown with a 'throw new' at least once
+     * Number of undeclared exception types that were explicitly thrown with a
+     * 'throw new' at least once
      */
     Explicit_TypeExceptions,
     /**
-     * Number of top-level methods throwing an undeclared exception implicitly (ie, no 'new throw')
+     * Number of top-level methods throwing an undeclared exception implicitly (ie,
+     * no 'new throw')
      */
     Implicit_MethodExceptions,
     /**
-     * Number of undeclared exception types that were implicitly thrown (ie, no 'new throw') at least once
+     * Number of undeclared exception types that were implicitly thrown (ie, no 'new
+     * throw') at least once
      */
     Implicit_TypeExceptions,
     /**
@@ -451,9 +467,13 @@ public enum RuntimeVariable {
      */
     RSM_OverMinimized,
     /* -------------------------------------------------------------------- */
-    /* TODO following needs to be implemented/updated. Currently they are not (necessarily) supported */
+    /*
+     * TODO following needs to be implemented/updated. Currently they are not
+     * (necessarily) supported
+     */
     /**
-     * (FIXME: need to be implemented) The number of serialized objects that EvoSuite is going to use for seeding strategies
+     * (FIXME: need to be implemented) The number of serialized objects that
+     * EvoSuite is going to use for seeding strategies
      */
     NumberOfInputPoolObjects,
     Error_Predicates,
@@ -514,7 +534,7 @@ public enum RuntimeVariable {
     /**
      * The number of constraint made of reference constraints and no other type
      */
-	ReferenceOnlyConstraints,
+    ReferenceOnlyConstraints,
     /**
      * The number of constraint made of integer and real constraints
      */
@@ -528,38 +548,41 @@ public enum RuntimeVariable {
      */
     RealAndStringConstraints,
     /**
-     * The number of constraint made of integer constraints and reference constraints
+     * The number of constraint made of integer constraints and reference
+     * constraints
      */
-	IntegerAndReferenceConstraints,
-	/**
+    IntegerAndReferenceConstraints,
+    /**
      * The number of constraint made of real constraints and reference constraints
      */
-	RealAndReferenceConstraints,
-	/**
+    RealAndReferenceConstraints,
+    /**
      * The number of constraint made of real constraints and reference constraints
      */
-	StringAndReferenceConstraints,
-	/**
+    StringAndReferenceConstraints,
+    /**
      * The number of constraint made of integer, real and reference constraints
      */
-	IntegerRealAndReferenceConstraints,
-	/**
+    IntegerRealAndReferenceConstraints,
+    /**
      * The number of constraint made of integer, string and reference constraints
      */
-	IntegerStringAndReferenceConstraints,
-	/**
+    IntegerStringAndReferenceConstraints,
+    /**
      * The number of constraint made of real, string and reference constraints
      */
-	RealStringAndReferenceConstraints,
-	/**
+    RealStringAndReferenceConstraints,
+    /**
      * Number of constraints containing integer, real and string constraints
      */
     IntegerRealAndStringConstraints,
     /**
      * Number of constraints containing all four types altogether
      */
-	IntegerRealStringAndReferenceConstraints,
-    /** The total number of constraints during the execution of the Genetic Algorithm*/
+    IntegerRealStringAndReferenceConstraints,
+    /**
+     * The total number of constraints during the execution of the Genetic Algorithm
+     */
     /**
      * This total should be the sum of all the other types of constraints
      */
@@ -689,7 +712,6 @@ public enum RuntimeVariable {
                     valid = false;
                 }
             }
-
 
             /*
              * TODO there are more things we could check here
