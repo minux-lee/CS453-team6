@@ -217,7 +217,7 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
                     break;
                 }
             }
-            fitnessValues[type] = fit;
+            fitnessValues[type] += fit;
             fitnessSum += fit;
         }
 
@@ -241,6 +241,9 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
         suite.setCoverage(this, coverage);
         suite.setNumOfCoveredGoals(this, numKilled);
 
+
+
+        // console.log("Fitness: {}, Killed: {}, Checked: {}, Goals: {})", fitness, numKilled, mutantsChecked, this.numMutants);
         return fitness;
     }
 
