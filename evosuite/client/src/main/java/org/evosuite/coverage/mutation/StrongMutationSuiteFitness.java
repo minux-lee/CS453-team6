@@ -21,9 +21,15 @@ package org.evosuite.coverage.mutation;
 
 import org.evosuite.Properties;
 import org.evosuite.instrumentation.mutation.InsertUnaryOperator;
+import org.evosuite.instrumentation.mutation.NegateCondition;
 import org.evosuite.instrumentation.mutation.ReplaceArithmeticOperator;
+import org.evosuite.instrumentation.mutation.ReplaceBitwiseOperator;
+import org.evosuite.instrumentation.mutation.ReplaceComparisonOperator;
 import org.evosuite.instrumentation.mutation.ReplaceConstant;
 import org.evosuite.instrumentation.mutation.ReplaceVariable;
+import org.evosuite.instrumentation.mutation.DeleteField;
+import org.evosuite.instrumentation.mutation.DeleteStatement;
+
 import org.evosuite.testcase.TestCase;
 import org.evosuite.testcase.TestChromosome;
 import org.evosuite.testcase.execution.ExecutionResult;
@@ -200,10 +206,17 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
         }
 
         // TODO: is it enough?
-        String[] operators = { ReplaceVariable.NAME, InsertUnaryOperator.NAME, ReplaceConstant.NAME,
-                ReplaceArithmeticOperator.NAME };
+        String[] operators = {
+                ReplaceVariable.NAME, InsertUnaryOperator.NAME, ReplaceConstant.NAME,
+                ReplaceArithmeticOperator.NAME, ReplaceBitwiseOperator.NAME, ReplaceComparisonOperator.NAME,
+                NegateCondition.NAME };
         Double[] fitnessValues = new Double[operators.length];
         Double fitnessSum = 0.0;
+
+        for  (int i = 0; i < operator.length; i++)
+        {
+            fitnessValues[i] = 0;
+        }
 
         // logger.info("Fitness values for " + minMutantFitness.size() + " mutants");
         for (Map.Entry<Mutation, Double> entry : minMutantFitness.entrySet()) {
@@ -217,6 +230,7 @@ public class StrongMutationSuiteFitness extends MutationSuiteFitness {
                     break;
                 }
             }
+            // logger.info("Fitness values for ")
             fitnessValues[type] += fit;
             fitnessSum += fit;
         }
