@@ -17,3 +17,9 @@ buildNumber.properties
 .classpath
 
 .vscode/
+
+.venv/
+__pycache__/
+*.pyc
+
+automation/results/
