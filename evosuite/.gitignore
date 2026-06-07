@@ -29,3 +29,5 @@ nbactions.xml
 ?
 Tutorial_Stack/
 TestSource/
+
+!Benchmark_Commons/lib/*.jar
