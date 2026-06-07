@@ -81,8 +81,6 @@ Phase A/B used `population=50`, which exhausted the time budget before any evolu
 |--------|--------|
 | Mutation score improved at best-config | **12/13** |
 | MS + entropy improved jointly | **9/13** |
-| Mann-Whitney $p < 0.05$ | **2/13** |
-| Pooled mean ΔMS (all $k$ settings) | **−1.5%** |
 
 ### Notable per-class gains (best tuned config)
 
@@ -98,9 +96,9 @@ Phase A/B used `population=50`, which exhausted the time budget before any evolu
 
 | Use case | Config |
 |----------|--------|
-| Safe default | `ADDITIVE`, $k = 0.5$–$1.0$ |
-| Strongest gains | `MULTIPLICATIVE`, $k = 0.5$–$0.75$ |
-| High pressure without collapse | `CAPPED_MULTIPLICATIVE`, $k = 2$–$4$, `cap=1.0` |
+| Safe default | `ADDITIVE`, $k = 0.5–1.0$ |
+| Strongest gains | `MULTIPLICATIVE`, $k = 0.5–0.75$ |
+| High pressure without collapse | `CAPPED_MULTIPLICATIVE`, $k = 2–4$, `cap=1.0` |
 | Avoid | `MULTIPLICATIVE`, $k \geq 2$ (score collapse risk) |
 
 ### Limitations
