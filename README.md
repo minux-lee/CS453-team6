@@ -73,7 +73,7 @@ $$
 - **Phases:** A/B (directional scan, pop=50, 40s) → C (dense $k$, pop=5, 60s, 8 classes) → D (large classes, pop=5, 120s).
 - **Control:** `-Dtest_archive=false` so suite-level fitness is the sole search driver.
 
-Phase A/B used `population=50`, which exhausted the time budget before any evolution (`Generations=0` on all 14 classes). Phase C/D switched to `population=5`, yielding real evolution (~35 generations on average). **Primary evidence comes from Phase C/D.**
+Phase A/B used `population=50`, which exhausted the time budget before any evolution (`Generations=0` on all 14 classes) for most cases. Phase C/D switched to `population=5`, yielding real evolution (~35 generations on average). **Primary evidence comes from Phase C/D.**
 
 ### Summary metrics (Phase C+D, 13 classes)
 
