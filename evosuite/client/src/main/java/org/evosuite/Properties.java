@@ -364,13 +364,16 @@ public class Properties {
     }
 
     // Added by CS453 Team 6
+    @Parameter(key = "diversity_coupling", group = "Search Algorithm", description = "How mutant-type diversity (Shannon entropy of killed-mutant operator types) is coupled with the base mutation fitness")
     public static DiversityCoupling DIVERSITY_COUPLING = DiversityCoupling.NONE;
 
     // Added by CS453 Team 6
+    @Parameter(key = "diversity_k", group = "Search Algorithm", description = "Selection-pressure scale applied to the diversity deficiency term (1 - normalized entropy). 0 reproduces the stock objective")
     @DoubleValue(min = 0.0, max = 1000.0)
     public static double DIVERSITY_K = 0.0;
 
     // Added by CS453 Team 6
+    @Parameter(key = "diversity_cap", group = "Search Algorithm", description = "Upper bound on the diversity penalty multiplier for CAPPED_MULTIPLICATIVE mode; prevents over-amplification at large k")
     @DoubleValue(min = 0.0, max = 1000.0)
     public static double DIVERSITY_CAP = 1.0;
 
