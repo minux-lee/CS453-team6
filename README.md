@@ -136,7 +136,7 @@ Java 8+, Maven, Python 3.10+
 
 ### Setup
 
-After cloning, build EvoSuite before running sweeps. The jar under `evosuite/master/target/` is not tracked in git; a fresh clone must compile it locally so CLI flags such as `-Ddiversity_coupling` are registered.
+After cloning, build EvoSuite before running sweeps. 
 
 ```bash
 python3 -m venv .venv
@@ -144,12 +144,6 @@ python3 -m venv .venv
 
 cd evosuite && mvn -q -pl client,master clean install -DskipTests
 cd ..
-```
-
-The first sweep can skip this step only if the jar above already exists and was built from the current source. To rebuild manually at any time:
-
-```bash
-cd evosuite && mvn -q -pl client,master clean install -DskipTests
 ```
 
 ### Experiment sweeps
