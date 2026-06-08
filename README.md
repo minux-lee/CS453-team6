@@ -204,3 +204,12 @@ Prints per-class best configs and the pooled honest summary (MS/entropy deltas, 
 3. Fraser, G., & Arcuri, A. (2014). Achieving higher test quality with mutation-based test generation. *TSE*, 40(9), 1041–1059.
 4. Just, R., et al. (2014). Are mutants a valid substitute for real faults? *FSE*.
 5. Papadakis, M., et al. (2019). Mutation testing advances. *Advances in Computers*, 112, 1–75.
+
+---
+
+## Contributors
+
+이민욱: `minux-lee`
+김민우: `aijk679`
+황준호: `freeutil06`
+지선우: `neutrino1359`
