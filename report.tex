@@ -1,0 +1,349 @@
+\documentclass{IEEEtran}
+
+\usepackage{cite}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage[hidelinks]{hyperref}
+\usepackage{balance}
+
+\begin{document}
+
+\title{Evolutionary Test Generation with Diversity-Aware Mutation Fitness}
+
+\author{
+\IEEEauthorblockN{Minwook Lee, Minwoo Kim, Junho Hwang, and Seonwoo Ji}
+\IEEEauthorblockA{CS453 Team 6\\
+KAIST}
+}
+
+\maketitle
+
+\begin{abstract}
+EvoSuite optimises mutation score by counting killed mutants, without considering which mutation operators they belong to.
+Two test suites can therefore achieve the same score while covering very different fault models.
+We extended EvoSuite's strong-mutation fitness with Shannon entropy over killed-mutant operator types and coupled this diversity signal into the base objective through several modes (additive, multiplicative, exponential, and capped-multiplicative).
+A Python automation pipeline ran approximately 3{,}790 EvoSuite experiments across 14 Apache Commons and Guava classes in four phases.
+After fixing a population-size issue that blocked evolution in early phases, tuned diversity coupling improved median mutation score on 12 of 13 evaluated classes and jointly improved mutation score and operator entropy on 9 of 13.
+Effects are class-specific; \texttt{CharUtils} was the sole regression.
+Overall, the results partially support our hypothesis that diversity-aware selection can broaden fault-model exploration, but a single global setting does not work everywhere.
+Code: \href{https://github.com/minux-lee/CS453-team6}{github.com/minux-lee/CS453-team6}.
+\end{abstract}
+
+\section{Introduction}
+
+Automated unit test generation is a practical way to improve software quality.
+EvoSuite~\cite{fraser2011evosuite,fraser2014mutation} uses an evolutionary algorithm to generate JUnit tests that maximise coverage and mutation-based criteria.
+The strong-mutation objective minimises branch distance plus per-mutant infection/propagation distances~\cite{fraser2014mutation}.
+Once a mutant is killed, the operator type does not affect fitness further.
+
+This creates a blind spot: two suites with the same mutation score can kill very different mixes of operator types.
+For example, one suite might kill mostly arithmetic mutants while another spreads kills across arithmetic, comparison, and condition-negation mutants.
+The second suite covers a broader fault model but receives identical selection pressure.
+
+Our hypothesis is that coupling operator-type diversity into fitness steers search toward broader exploration and improves mutation score without sacrificing it.
+This report describes the problem, our EvoSuite extension, experiments, and a before/after comparison against a baseline with diversity coupling disabled.
+
+\section{Problem and Hypothesis}
+
+Mutation testing measures how many artificial faults a suite detects~\cite{papadakis2019mutation}.
+EvoSuite's strong-mutation fitness combines branch coverage with distances to alive mutants (lower is better).
+
+The score counts \emph{how many} mutants are killed, not \emph{which} operator types they represent.
+EvoSuite uses nine primary operators (field deletion, statement deletion, unary insertion, variable replacement, constant replacement, arithmetic replacement, comparison replacement, bitwise replacement, condition negation) plus an ``other'' bucket.
+
+\textbf{Hypothesis:} a normalised Shannon-entropy measure over killed-mutant operator types, when coupled into fitness, improves mutation score and operator diversity together compared with the stock objective under the same time and population budget.
+
+We use operator entropy as a proxy for fault-model breadth and do not validate against real faults (e.g., Defects4J).
+
+\section{Approach}
+
+\subsection{Diversity Metric}
+
+Let $c_i$ be killed mutants in operator bucket $i$, $p_i = c_i / \sum_j c_j$, and $n$ the number of buckets present:
+\begin{align}
+v &= -\textstyle\sum_{i=1}^{n} p_i \log p_i, \label{eq:entropy-a}\\
+\hat{v} &= v / \log n \in [0,1], \qquad \delta = 1 - \hat{v}. \label{eq:entropy-b}
+\end{align}
+$\hat{v}$ is normalised entropy; $\delta$ is \emph{diversity deficiency} (0 = diverse, 1 = single-type concentration).
+Entropy is computed over killed mutants on each fitness evaluation.
+
+\subsection{Coupled Fitness}
+
+EvoSuite minimises fitness. The base value is
+$F_{\mathrm{base}} = f_{\mathrm{branch}} + \sum_{m \in \mathrm{alive}} d_{\min}(m)$.
+Table~\ref{tab:fitness} lists coupling modes controlled by \texttt{-Ddiversity\_coupling}, \texttt{-Ddiversity\_k}, and \texttt{-Ddiversity\_cap}.
+
+\begin{table}[htbp]
+\caption{Coupled fitness modes ($\delta = 1-\hat{v}$).}
+\label{tab:fitness}
+\centering
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Mode & Formula \\
+\midrule
+\texttt{NONE} & $F_{\mathrm{base}}$ \\
+\texttt{MULT} & $F_{\mathrm{base}}(1 + k\delta)$ \\
+\texttt{ADD} & $F_{\mathrm{base}} + k\delta$ \\
+\texttt{EXP} & $F_{\mathrm{base}}\, e^{k\delta}$ \\
+\texttt{CAP\_MULT} & $F_{\mathrm{base}}(1 + \min(k\delta, c))$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Plain multiplicative coupling at large $k$ can collapse mutation score by over-penalising low diversity; \texttt{CAPPED\_MULTIPLICATIVE} limits the multiplier with cap~$c$.
+
+\section{Implementation}
+
+We started from the latest EvoSuite release on GitHub, integrated our changes into the project repository, and built with Maven.
+Table~\ref{tab:files} lists the main modified files.
+
+\begin{table}[htbp]
+\caption{EvoSuite source changes.}
+\label{tab:files}
+\centering
+\footnotesize
+\begin{tabular}{@{}p{0.48\columnwidth}p{0.46\columnwidth}@{}}
+\toprule
+File & Change \\
+\midrule
+\texttt{StrongMutation\-SuiteFitness.java} &
+Operator bucketing, entropy, coupled fitness, stats export \\
+\texttt{Properties.java} &
+\texttt{DiversityCoupling} enum; \texttt{diversity\_k}, \texttt{diversity\_cap} \\
+\texttt{RuntimeVariable.java} &
+\texttt{MutantTypeEntropy}, \texttt{MutantTypeEntropyNorm} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{\texttt{StrongMutationSuiteFitness.java}.}
+We restructured the evaluator to separate base mutation distances from diversity coupling, map mutants to operator buckets, and export entropy to \texttt{statistics.csv}.
+Seven defects in the initial skeleton (null-pointer risks, NaN propagation, inverted optimisation direction) were fixed during integration.
+
+The repository also contains a Python \texttt{automation/} package (benchmark registry, parallel EvoSuite runner, resumable sweeps, phase drivers) and an \texttt{analysis/} package (CSV parsing, delta metrics, plotting).
+
+\section{Experimental Setup}
+
+\subsection{Benchmarks}
+
+We used 14 utility classes from commons-math3, commons-lang3, commons-text, commons-codec, and Guava.
+Table~\ref{tab:benchmarks} lists the benchmarks and domains.
+
+\begin{table}[htbp]
+\caption{Benchmark classes (14 total).}
+\label{tab:benchmarks}
+\centering
+\footnotesize
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}lll@{}}
+\toprule
+Class & Library & Dom. \\
+\midrule
+ArithmeticUtils, Fraction, & & \\
+Precision, Complex & math3 & num. \\
+IntMath & Guava & num. \\
+IEEE754rUtils, NumberUtils, & & \\
+CharUtils, BooleanUtils & lang3 & mixed \\
+WordUtils, LevenshteinDist. & text & str. \\
+Strings & Guava & str. \\
+Hex, Soundex & codec & enc. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Phases and Budgets}
+
+Experiments proceeded in four phases (Table~\ref{tab:phases}).
+Phase~A used a coarse $k$ grid $\{0.25, 0.5, 1.0, 2.0, 4.0, 8.0\}$, population 50, 40\,s budget, and 3 seeds.
+Phase~B re-ran promising configurations with 10 seeds.
+Phases~C and~D are the primary evidence: population 5, denser $k$ grids, and 8 or 6 seeds.
+
+\begin{table}[htbp]
+\caption{Experimental phases.}
+\label{tab:phases}
+\centering
+\small
+\begin{tabular}{@{}cccc@{}}
+\toprule
+Ph. & \#Cls & Pop. & Budget \\
+\midrule
+A & 14 & 50 & 40\,s \\
+B & 14 & 50 & 40\,s \\
+C & 8 & 5 & 60\,s \\
+D & 6 & 5 & 120\,s \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Population artefact.}
+With population 50 and short budgets, most Phase~A/B runs reported \texttt{Generations=0}: the initial random population exhausted the time limit before evolution occurred.
+Reducing population to 5 in Phases~C/D enabled real search ($\sim$35 generations on average); all comparative claims below refer to Phase~C/D.
+
+\textbf{Control settings.}
+All runs used \texttt{STRONGMUTATION}, \texttt{-Dtest\_archive=false}, and \texttt{NONE} as baseline.
+Metrics: mutation score (\texttt{Coverage}), normalised entropy (\texttt{MutantTypeEntropyNorm}), and deltas vs.\ matched baseline.
+
+\section{Results}
+
+\subsection{Phase A/B Screening}
+
+Phase~A/B established directional trends:
+\texttt{EXPONENTIAL} coupling failed to train reliably and was excluded from later phases.
+\texttt{ADDITIVE} and \texttt{MULTIPLICATIVE} with $k \in [0, 1.5]$ showed stable gains; plain \texttt{MULTIPLICATIVE} with $k > 2$ frequently collapsed mutation score, motivating \texttt{CAPPED\_MULTIPLICATIVE}.
+
+\subsection{Phase C (Smaller Classes)}
+
+Phase~C evaluated eight classes (\texttt{Soundex}, \texttt{Hex}, \texttt{Fraction}, \texttt{Precision}, \texttt{NumberUtils}, \texttt{IEEE754rUtils}, \texttt{CharUtils}, \texttt{Strings}) with a dense $k$ grid, eight seeds, and population 5.
+Table~\ref{tab:phc_k} lists the best $k$ per coupling mode selected by average mutation score.
+
+\begin{table}[htbp]
+\caption{Phase C: best $k$ per coupling mode.}
+\label{tab:phc_k}
+\centering
+\small
+\begin{tabular}{@{}lc@{}}
+\toprule
+Coupling & Best $k$ \\
+\midrule
+\texttt{ADDITIVE} & 0.5 \\
+\texttt{MULTIPLICATIVE} & 0.2 \\
+\texttt{CAPPED\_MULTIPLICATIVE} & 8.0 (cap 1.0) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\texttt{CharUtils} was an outlier: the baseline already achieved high mutation score and entropy; diversity pressure shifted selection toward operator balance at the cost of fewer killed mutants ($\Delta\mathrm{MS} \approx -0.054$).
+
+\subsection{Phase D (Larger Classes)}
+
+Phase~D targeted six larger classes (\texttt{ArithmeticUtils}, \texttt{Complex}, \texttt{BooleanUtils}, \texttt{WordUtils}, \texttt{Fraction}, \texttt{IntMath}) with a 120\,s budget.
+Table~\ref{tab:phd_k} lists the best $k$ values.
+
+\begin{table}[htbp]
+\caption{Phase D: best $k$ per coupling mode.}
+\label{tab:phd_k}
+\centering
+\small
+\begin{tabular}{@{}lc@{}}
+\toprule
+Coupling & Best $k$ \\
+\midrule
+\texttt{ADDITIVE} & 0.5 \\
+\texttt{MULTIPLICATIVE} & 0.75 \\
+\texttt{CAPPED\_MULTIPLICATIVE} & 2.0 (cap 1.0) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Combined Phase C+D Summary}
+
+Across 13 unique classes covered by Phases~C and~D (8 + 6 minus overlapping \texttt{Fraction}):
+\textbf{12/13} improved median mutation score under the best tuned configuration per class;
+\textbf{9/13} improved both mutation score and normalised entropy at that configuration;
+\textbf{1/13} (\texttt{CharUtils}) regressed.
+
+Table~\ref{tab:gains} highlights notable per-class gains at best tuned settings.
+
+\begin{table}[htbp]
+\caption{Selected per-class improvements (Phase C+D).}
+\label{tab:gains}
+\centering
+\small
+\setlength{\tabcolsep}{3pt}
+\begin{tabular}{@{}llcr@{}}
+\toprule
+Class & Coupling & $k$ & $\Delta$MS \\
+\midrule
+Fraction & MULT & 0.75 & +.091 \\
+Precision & ADD & 1.5 & +.079 \\
+Soundex & MULT & 0.5 & +.044 \\
+ArithmeticUtils & CAP\_MULT & 0.5 & +.051 \\
+CharUtils & --- & --- & $-.054$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Domain-level aggregation (Table~\ref{tab:domain}) shows mutation score improvements in numeric, boolean, and encoding domains; the string domain regressed only on \texttt{CharUtils}.
+
+\begin{table}[htbp]
+\caption{Domain-level trend at best configuration (Phase C+D).}
+\label{tab:domain}
+\centering
+\small
+\begin{tabular}{@{}ll@{}}
+\toprule
+Domain & Trend \\
+\midrule
+Numeric & Improved on most classes \\
+Boolean & Improved \\
+Encoding & Improved (\texttt{Soundex}, \texttt{Hex}) \\
+String & Improved except \texttt{CharUtils} \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+With $\leq 8$ seeds per setting, Mann--Whitney $U$ tests ($p < 0.05$) rarely reached significance; we emphasise median effect sizes.
+
+\subsection{Before/After Interpretation}
+
+Relative to the \texttt{NONE} baseline under identical budgets:
+
+\begin{enumerate}
+\item Modest $k$ (0.2--0.75) most often \emph{increased} mutation score rather than trading it for entropy alone.
+\item \texttt{MULTIPLICATIVE} with $k \geq 2$ reliably \emph{degraded} mutation score.
+\item \texttt{CAPPED\_MULTIPLICATIVE} stabilised high-$k$ behaviour (e.g., \texttt{ArithmeticUtils}).
+\item Effects are \emph{conditional}: no single $(\mathrm{mode}, k)$ dominated all classes.
+\end{enumerate}
+
+Table~\ref{tab:recommend} summarises practical configuration choices from our experiments.
+
+\begin{table}[htbp]
+\caption{Practical configuration recommendations.}
+\label{tab:recommend}
+\centering
+\footnotesize
+\begin{tabular}{@{}lll@{}}
+\toprule
+Use case & Mode & $k$ \\
+\midrule
+Safe default & \texttt{ADDITIVE} & 0.5--1.0 \\
+Strongest gains & \texttt{MULTIPLICATIVE} & 0.5--0.75 \\
+High $k$ without collapse & \texttt{CAP\_MULT} & 2--4 (cap 1.0) \\
+Avoid & \texttt{MULTIPLICATIVE} & $\geq 2$ \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\section{Limitations and Future Work}
+
+Phases~C/D used population~5 and 60--120\,s budgets; results may differ with EvoSuite defaults and longer runs.
+\texttt{test\_archive=false} isolates suite-fitness effects but lowers absolute scores.
+Operator entropy is a proxy, not validated against real faults~\cite{just2014mutants}.
+Future work: larger budgets, per-generation tracking, phased objectives, and Defects4J evaluation.
+
+\section{Conclusion}
+
+We extended EvoSuite strong-mutation fitness with operator-type entropy coupling.
+On 13 benchmark classes, tuned settings improved mutation score on 12/13 and jointly improved score and entropy on 9/13.
+The hypothesis is partially supported: diversity-aware fitness helps on many classes but needs per-class tuning.
+A practical default is \texttt{ADDITIVE} with $k \approx 0.5$--1.0; use \texttt{CAPPED\_MULTIPLICATIVE} when stronger diversity pressure is needed.
+
+\balance
+\begin{thebibliography}{00}
+
+\bibitem{fraser2011evosuite}
+G.~Fraser and A.~Arcuri, ``EvoSuite: Automatic test suite generation for Java classes,'' in \emph{Proc. ISSTA}, 2011.
+
+\bibitem{fraser2014mutation}
+G.~Fraser and A.~Arcuri, ``Achieving higher test quality with mutation-based test generation,'' \emph{IEEE Trans. Softw. Eng.}, vol.~40, no.~9, pp.~1041--1059, 2014.
+
+\bibitem{papadakis2019mutation}
+M.~Papadakis \emph{et al.}, ``Mutation testing advances,'' \emph{Adv. Comput.}, vol.~112, pp.~1--75, 2019.
+
+\bibitem{just2014mutants}
+R.~Just \emph{et al.}, ``Are mutants a valid substitute for real faults?'' in \emph{Proc. FSE}, 2014.
+
+\end{thebibliography}
+
+\end{document}
